@@ -1,0 +1,136 @@
+Process -> When user runs an application the OS takes that program from the disk and creates instane of that application in the memory which is called a process/context.
+Process contains: Main thread (stack, instruction ptr), Heap, Metadata for the process, files that the process reads & code.
+Each process may have multiple threads.
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Situations that may require multi threading
+
+Type 1:
+    If n tasks are literally independent of each other the can be don indepentently.
+    If we have n cores we want to utilize all of them.
+
+Type 2:
+    Lets say stpes are like 
+    A -> B -> C -> D
+    each statge take wait for some response (maybe some data) but processing takes very less time.
+   
+    In this situation we can build something like a state machine and keep checking the statge we are at (A,B,C,D)
+    If the machine is waiting for data we can go haed and finish some other work (like maybe rendering some UI)
+    If the data is avaliable we process and more to next stage. In the end we get the result out.
+    Using cooroutines we can write code like A(); B(); C(); D(); and it will automatically turn it into a state machine.
+
+    We can also use callback functions to solve this problem.
+
+    Another way to solve this problem is to use threads.
+    thread t1: { A(); B(); C(); D(); }
+    when the thread t1 is waitng the operating system gives the cpu to another thread that needs cpu time.
+
+Type 3:
+    If there is a buffer that needs to filled contineously the this job should be given to a different thread.
+
+Type 4:
+    Sometimes threads can be used for organizational purpose. Its a good way to seprate concerns.
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Race Consdition:
+let 
+    void func(int& x) { ++x; }
+
+    int main()
+    {
+        int x{};
+        std::jthread t1(func, std::ref(x));
+        std::jthread t2(func, std::ref(x));
+    }
+
+In this situation will have something called a race condition.
+Increment happens in 3 steps.
+The value is loaded into cpu then the calcualtion happens then the data is stored back.
+Both the threads might load same value do there calcualtion and stored the results. 
+The result here will not be 2 but 1.
+This problem can be solved using mutex. Two thread mutually exclude each other from doing the same thing at the same time.
+
+    void func(int& x, std::mutex& mtx)
+    {
+        mtx.lock();
+        ++x;
+        mtx.unlock();
+    }
+
+    int main()
+    {
+        int x{};
+        std::mutex mtx;
+        std::jthread t1(func, std::ref(x), std::ref(mtx));
+        std::jthread t2(func, std::ref(x), std::ref(mtx));
+        return 0;
+    }
+
+We can also use lock_guard to get raii
+
+    void func(int& x, std::mutex& mtx)
+    {
+        std::lock_guard g(mtx);
+        ++x;
+    }
+
+    int main()
+    {
+        int x{};
+        std::mutex mtx;
+        std::jthread t1(func, std::ref(x), std::ref(mtx));
+        std::jthread t2(func, std::ref(x), std::ref(mtx));
+        return 0;
+    }
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Padding:
+Whenever a piece of data, say a 4-bytes int, is loaded into CPU, the actual hardware doesn't just transfers 4-bytes.
+A DDR4 RAM transfers 64-bytes and stores all that in cashe in CPU. So the speed of transfering 4-bytes and 64-bytes is same.
+
+When we have multiple cores accessing the memory, if one core writes to the memory that change has to propogate to all the cores.
+In order for that to happen there is a kind of lock that happening at the hardware side, when multiple cores are writting and reading at the same time to preserve the coherency of the cashe.
+Since modern CPUs has a 64 bytes line size, if we have 4 integers they all will be in a same cashe line.
+So if 4 threads are reading and writing to 4 integers we'll have syncronization because they are all reading and writing to the same cashe line i.e. same place in the memory.
+As a result it'll be a lot slower.
+
+To solve this problem instead of using 
+    int value;
+
+we can use 
+    struct value
+    {
+        int val;
+        char padding[60];
+    };
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Thread cost:
+Creating a thread a an expensive operation, OS has to create context for the thread, every thread has its own stack etc etc..
+So breaking the work into smaller jobs may turn out to be very expensive but sometime breaking is the only option.
+
+So instead of spawing new thread for every small job and killing it when the work is done, 
+we keep our worker threads alive and master thread periodically communicates to them and dispatches jobs to them.
+After finish the job the worker will (somehow) signal the back to master and go to sleep.
+But now we need to do all this syncronization, from master to worker and from worker back to the master which might be complicated but it is usually worth it.
+
+    Polling:
+    One way to do this is to have a flag (mutex protected) and the worker pools for it (like every 10ms) to see when it has jobs,
+    and similarly master will have to check when the worker is done working.
+    This process way is wastefull in a couple of ways.. 
+        - these has to be constantly waking up and checking mutexes
+        - lets say polling happens every 10ms if data is avaliable 1ms after polling 9ms are wasted
+
+
+    Condition Variable:
+    It is a signaling mechanism. Multiple threads can wait on the CV. And a different thread can call the notify function which call one or all of the waiting threads to wake up.
+    Will have a shared flag(mutex protected), and instead of workers polling that flag the master is going to set it notify the CV.
+    Condition Variable must be used together with a mutex.
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Unbalanced Loads:
+Usually when we have a bunch of tasks to do and threads working on those tasks, those tasks won't take same amount of time. And we will only be able to know how long a task takes once we finish a task.
