@@ -1,9 +1,12 @@
-#include "headers/tasks.hpp"
+#include "headers/jobs.hpp"
 
+#include <bits/basic_string.h>
 #include <cstring>
 
 auto main(int argc, char** argv) -> int
 {
-    if (argc > 1 && strcmp(argv[1], "--smol") == 0) { return do_smallies(); }
-    return do_biggie();
+    using namespace std::string_literals;
+    bool stacked{};
+    if (argc > 1 and argv[1] == "--stacked"s) { stacked = true; }
+    return do_experiment(stacked);
 }

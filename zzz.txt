@@ -1,4 +1,4 @@
-Process -> When user runs an application the OS takes that program from the disk and creates instane of that application in the memory which is called a process/context.
+Process -> When user runs an application the OS takes that program from the disk and creates instance of that application in the memory which is called a process/context.
 Process contains: Main thread (stack, instruction ptr), Heap, Metadata for the process, files that the process reads & code.
 Each process may have multiple threads.
 
@@ -7,7 +7,7 @@ Each process may have multiple threads.
 Situations that may require multi threading
 
 Type 1:
-    If n tasks are literally independent of each other the can be don indepentently.
+    If n tasks are literally independent of each other the can be done indepentently.
     If we have n cores we want to utilize all of them.
 
 Type 2:
@@ -15,9 +15,9 @@ Type 2:
     A -> B -> C -> D
     each statge take wait for some response (maybe some data) but processing takes very less time.
    
-    In this situation we can build something like a state machine and keep checking the statge we are at (A,B,C,D)
+    In this situation we can build something like a state machine and keep checking the stage we are at (A,B,C,D)
     If the machine is waiting for data we can go haed and finish some other work (like maybe rendering some UI)
-    If the data is avaliable we process and more to next stage. In the end we get the result out.
+    If the data is avaliable we process and move to next stage. In the end we get the result out.
     Using cooroutines we can write code like A(); B(); C(); D(); and it will automatically turn it into a state machine.
 
     We can also use callback functions to solve this problem.
