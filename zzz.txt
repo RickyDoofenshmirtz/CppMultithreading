@@ -110,7 +110,7 @@ we can use
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 Thread cost:
-Creating a thread a an expensive operation, OS has to create context for the thread, every thread has its own stack etc etc..
+Creating a thread is an expensive operation, OS has to create context for the thread, every thread has its own stack etc etc..
 So breaking the work into smaller jobs may turn out to be very expensive but sometime breaking is the only option.
 
 So instead of spawing new thread for every small job and killing it when the work is done, 

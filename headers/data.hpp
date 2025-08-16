@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <cstdarg>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -13,6 +12,8 @@
 #include <random>
 #include <span>
 #include <vector>
+
+#define DEBUG
 
 [[maybe_unused]]
 static constexpr bool CHUNK_MEASUREMENT_ENABLED = false;
@@ -43,9 +44,8 @@ struct task
         for (std::size_t i{}; i < iterations; ++i)
         {
             const auto digits =
-                static_cast<std::uint32_t>(std::abs(
-                    std::sin(std::numbers::pi * std::cos(intermediate)) *
-                    10'000'000.0)) %
+                static_cast<std::uint32_t>(
+                    std::abs(std::sin(std::numbers::pi * std::cos(intermediate)) * 10'000'000.0)) %
                 100'000;
             intermediate = static_cast<double>(digits) / 10'000.0;
         }
@@ -64,14 +64,12 @@ inline auto generate_data_set() -> std::vector<std::array<task, CHUNK_SIZE>>
     {
         std::ranges::generate(
             chunk,
-            [&]() -> task
-            { return task{ .value = v_dist(rne), .heavy = h_dist(rne) }; });
+            [&]() -> task { return task{ .value = v_dist(rne), .heavy = h_dist(rne) }; });
     }
     return chunks;
 }
 
-inline auto generate_data_set_evenly()
-    -> std::vector<std::array<task, CHUNK_SIZE>>
+inline auto generate_data_set_evenly() -> std::vector<std::array<task, CHUNK_SIZE>>
 {
     std::minstd_rand rne;
     std::uniform_real_distribution v_dist{ 0.0, 2.0 * std::numbers::pi };
@@ -95,14 +93,10 @@ inline auto generate_data_set_evenly()
     return chunks;
 }
 
-inline auto generate_data_set_stacked()
-    -> std::vector<std::array<task, CHUNK_SIZE>>
+inline auto generate_data_set_stacked() -> std::vector<std::array<task, CHUNK_SIZE>>
 {
     auto chunks = generate_data_set_evenly();
-    for (auto& chunk : chunks)
-    {
-        std::ranges::partition(chunk, std::identity{}, &task::heavy);
-    }
+    for (auto& chunk : chunks) { std::ranges::partition(chunk, std::identity{}, &task::heavy); }
     return chunks;
 }
 
@@ -110,9 +104,8 @@ inline void process_dataset(std::span<const int> set, int& sum)
 {
     for (const int data : set)
     {
-        static constexpr auto limit =
-            static_cast<double>(std::numeric_limits<int>::max());
-        const double x = static_cast<double>(data) / limit;
+        static constexpr auto limit = static_cast<double>(std::numeric_limits<int>::max());
+        const double x              = static_cast<double>(data) / limit;
         sum += static_cast<int>(sin(cos(x)) * limit);
     }
 }

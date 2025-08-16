@@ -17,7 +17,7 @@ public:
     using value_type = task;
 
     explicit worker(master_control* master)
-        : p_master(master), m_thread(&worker::run, this)
+        : p_master(master), m_thread(&worker::p_run, this)
     {
     }
 
@@ -48,15 +48,28 @@ public:
 
     auto get_result() const -> std::uint32_t { return m_accumulation; }
 
-    auto get_heavy_item_processed_cnt() const -> std::size_t
-    {
-        return m_heavy_items_prcessed;
-    }
+    auto get_heavy_item_processed_cnt() const -> std::size_t { return m_heavy_items_prcessed; }
 
     auto get_job_work_time() const -> double { return m_work_time; }
 
 private:
-    void process_data()
+    void p_run()
+    {
+        std::unique_lock lk{ m_mtx };
+        while (true)
+        {
+            timer watch;
+            m_cv.wait(lk, [this] { return !m_input.empty() || m_dying; });
+            if (m_dying) { break; }
+            if constexpr (CHUNK_MEASUREMENT_ENABLED) { watch.reset(); }
+            p_process_data();
+            if constexpr (CHUNK_MEASUREMENT_ENABLED) { m_work_time = watch.elapsed(); }
+            m_input = {};
+            p_master->signal_done();
+        }
+    }
+
+    void p_process_data()
     {
         m_heavy_items_prcessed = 0;
         for (auto& task : m_input)
@@ -69,25 +82,6 @@ private:
         }
     }
 
-    void run()
-    {
-        std::unique_lock lk{ m_mtx };
-        while (true)
-        {
-            timer watch;
-            m_cv.wait(lk, [this] { return !m_input.empty() || m_dying; });
-            if (m_dying) { break; }
-            if constexpr (CHUNK_MEASUREMENT_ENABLED) { watch.reset(); }
-            process_data();
-            if constexpr (CHUNK_MEASUREMENT_ENABLED)
-            {
-                m_work_time = watch.elapsed();
-            }
-            m_input = {};
-            p_master->signal_done();
-        }
-    }
-
     master_control* p_master;
     std::jthread m_thread;
     std::condition_variable m_cv;
@@ -96,7 +90,8 @@ private:
     // shared memory
     std::span<const value_type> m_input;
     std::uint32_t m_accumulation{};
+    bool m_dying{};
+
     double m_work_time = -1.0;
     std::size_t m_heavy_items_prcessed{};
-    bool m_dying{};
 };

@@ -32,29 +32,19 @@ inline void write_to_csv(std::span<const chunk_timing_info> timings)
         std::size_t total_heavy{};
         for (std::size_t i{}; i < WORKER_COUNT; ++i)
         {
-            const auto idle =
-                chunk.total_chunk_time - chunk.time_spent_working_per_thread[i];
+            const auto idle  = chunk.total_chunk_time - chunk.time_spent_working_per_thread[i];
             const auto heavy = chunk.number_of_heavy_itmes_per_thread[i];
-            csv << std::format(
-                "{},{},{},",
-                chunk.time_spent_working_per_thread[i],
-                idle,
-                heavy);
+            csv << std::format("{},{},{},", chunk.time_spent_working_per_thread[i], idle, heavy);
             total_idle += idle;
             total_heavy += heavy;
         }
-        csv << std::format(
-            "{},{},{}\n",
-            chunk.total_chunk_time,
-            total_idle,
-            total_heavy);
+        csv << std::format("{},{},{}\n", chunk.total_chunk_time, total_idle, total_heavy);
     }
 }
 
 inline auto do_experiment(bool stacked) -> int
 {
-    const auto chunks =
-        (stacked) ? generate_data_set_stacked() : generate_data_set_evenly();
+    const auto chunks = (stacked) ? generate_data_set_stacked() : generate_data_set_evenly();
 
     timer chunk_timer;
     std::vector<chunk_timing_info> timings{};
@@ -74,22 +64,19 @@ inline auto do_experiment(bool stacked) -> int
         if constexpr (CHUNK_MEASUREMENT_ENABLED) { chunk_timer.reset(); }
         for (std::size_t i{}; i < WORKER_COUNT; ++i)
         {
-            worker_ptrs[i]->set_job(
-                std::span{ &chunk[i * SUBSET_SIZE], SUBSET_SIZE });
+            worker_ptrs[i]->set_job(std::span{ &chunk[i * SUBSET_SIZE], SUBSET_SIZE });
         }
         mctrl.wait_for_all_done();
 
         if constexpr (CHUNK_MEASUREMENT_ENABLED)
         {
-            timings.push_back(
-                chunk_timing_info{ .total_chunk_time = chunk_timer.elapsed() });
+            timings.push_back(chunk_timing_info{ .total_chunk_time = chunk_timer.elapsed() });
             for (std::size_t i{}; i < WORKER_COUNT; ++i)
             {
                 auto& curr = timings.back();
                 curr.number_of_heavy_itmes_per_thread[i] =
                     worker_ptrs[i]->get_heavy_item_processed_cnt();
-                curr.time_spent_working_per_thread[i] =
-                    worker_ptrs[i]->get_job_work_time();
+                curr.time_spent_working_per_thread[i] = worker_ptrs[i]->get_job_work_time();
             }
         }
     }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "data.hpp"
+
 #include <condition_variable>
 #include <cstddef>
 #include <mutex>
@@ -8,7 +9,7 @@
 class master_control
 {
 public:
-    explicit master_control()
+    master_control()
         : m_lock(m_mtx)
     {
     }

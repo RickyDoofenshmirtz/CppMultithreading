@@ -1,9 +1,9 @@
 #include "headers/jobs.hpp"
 
-#include <bits/basic_string.h>
-#include <cstring>
+#include <cstdint>
+#include <xstring>
 
-auto main(int argc, char** argv) -> int
+auto main(int argc, char** argv) -> std::int32_t
 {
     using namespace std::string_literals;
     bool stacked{};
